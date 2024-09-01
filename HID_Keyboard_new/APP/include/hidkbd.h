@@ -33,6 +33,8 @@ extern "C" {
 #define START_REPORT_EVT          0x0002
 #define START_PARAM_UPDATE_EVT    0x0004
 #define START_PHY_UPDATE_EVT      0x0008
+
+#define FLASH_POWER_LED_EVT			  0x0010
 /*********************************************************************
  * MACROS
  */
@@ -45,7 +47,9 @@ extern "C" {
 #define MODE_BACKWARD 1
 
 #define BUTTON_PIN GPIO_Pin_15  // PB15
-#define SELECT_PIN GPIO_Pin_4   //PB4
+#define BUTTON_SELECT_PIN GPIO_Pin_4
+
+#define USB_CONNECTED_PIN GPIO_Pin_14
 
 #define LED_PIN				GPIO_Pin_7      // PB7
 #define LED_FORWARD_PIN		GPIO_Pin_15 //PA15
@@ -65,7 +69,7 @@ extern "C" {
 #define HID_KEY_ARROW_LEFT 0x50
 #define HID_KEY_ARROW_DOWN 0x51
 #define HID_KEY_ARROW_UP 0x52
-
+#define HID_KEY_VOLUME_UP 0x52
 /*********************************************************************
  * GLOBAL VARIABLES
  */

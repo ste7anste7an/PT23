@@ -63,16 +63,31 @@ int main(void)
     GPIOB_ModeCfg(GPIO_Pin_All, GPIO_ModeIN_PU);
 #endif
 
+// set PB12 low, for restance divider for measuring batt voltage
+GPIOB_ResetBits(GPIO_Pin_12);
+GPIOB_ModeCfg(GPIO_Pin_12, GPIO_ModeOut_PP_5mA);
+GPIOB_ResetBits(GPIO_Pin_12);
+
+// init ADC on PA12
+GPIOA_ModeCfg(GPIO_Pin_12, GPIO_ModeIN_Floating);
+ADC_ExtSingleChSampInit(SampleFreq_3_2, ADC_PGA_1_4);
+//  ADC channel 2
+
 GPIOB_ModeCfg(BUTTON_PIN, GPIO_ModeIN_PU);
 GPIOB_ITModeCfg(BUTTON_PIN, GPIO_ITMode_FallEdge);
 GPIOB_ClearITFlagBit(BUTTON_PIN);
 PFIC_EnableIRQ(GPIO_B_IRQn);
 
 
-GPIOB_ModeCfg(SELECT_PIN, GPIO_ModeIN_PU);
-GPIOB_ITModeCfg(SELECT_PIN, GPIO_ITMode_FallEdge);
-GPIOB_ClearITFlagBit(SELECT_PIN);
+GPIOB_ModeCfg(BUTTON_SELECT_PIN, GPIO_ModeIN_PU);
+GPIOB_ITModeCfg(BUTTON_SELECT_PIN, GPIO_ITMode_FallEdge);
+GPIOB_ClearITFlagBit(BUTTON_SELECT_PIN);
 PFIC_EnableIRQ(GPIO_B_IRQn);
+
+// check usb charging
+GPIOB_ModeCfg(USB_CONNECTED_PIN, GPIO_ModeIN_PD);
+
+//GPIOB_ITModeCfg(USB_CONNECTED_PIN, GPIO_ITMode_FallEdge);
 
 
 GPIOB_SetBits(LED_PIN);
@@ -129,6 +144,9 @@ PFIC_EnableIRQ(TMR0_IRQn);
     GAPRole_PeripheralInit();
     HidDev_Init();
     HidEmu_Init();
+
+    //tmos_start_task(hidEmuTaskId, FLASH_POWER_LED_EVT, 2000);
+
     Main_Circulation();
 }
 

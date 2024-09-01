@@ -3,7 +3,7 @@
  * Author             : WCH
  * Version            : V1.0
  * Date               : 2018/12/10
- * Description        : ��������Ӧ�ó��򣬳�ʼ���㲥���Ӳ�����Ȼ��㲥��ֱ�����������󣬶�ʱ�ϴ���ֵ
+ * Description        : À¶ÑÀ¼üÅÌÓ¦ÓÃ³ÌÐò£¬³õÊ¼»¯¹ã²¥Á¬½Ó²ÎÊý£¬È»ºó¹ã²¥£¬Ö±ÖÁÁ¬½ÓÖ÷»úºó£¬¶¨Ê±ÉÏ´«¼üÖµ
  *********************************************************************************
  * Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
  * Attention: This software (modified or not) and binary are used for 
@@ -94,83 +94,164 @@ static uint8_t hidEmuTaskId = INVALID_TASK_ID;
 
 
 
+uint16_t global_adc=0;
+uint16_t check_bat_counter=50; // start seting global_adc
+
+uint16_t check_low_battery(void) {
+
+	check_bat_counter++;
+	//printf("check_bat_counter %d\n\r",check_bat_counter);
+	if (check_bat_counter>20) {
+		// check USB
+		uint16_t adc;
+		uint8_t  percent;
+		uint16_t RoughCalib_Value = ADC_DataCalib_Rough(); // ╙├╙┌╝╞╦πADC─┌▓┐╞½▓εú¼╝╟┬╝╡╜╚½╛╓▒Σ┴┐ RoughCalib_Value╓╨
+		ADC_ChannelCfg(2);
+		uint16_t batlev= ADC_ExcutSingleConver();
+		adc = batlev+ RoughCalib_Value;
+		printf("check bat: adc = %d low %d\r\n",batlev+ RoughCalib_Value,(adc < 2460));
+		check_bat_counter=0;
+		global_adc=adc;
+		if (GPIOB_ReadPortPin(USB_CONNECTED_PIN) == 0) {
+			printf("battery operation\r\n");
+			//return 0;
+		} else {
+			printf("USB charging\r\n");
+			if (global_adc<2600){
+				GPIOA_ResetBits(LED_PIN);
+			    return 1;
+			} else {
+				GPIOA_SetBits(LED_PIN);
+			    return 0;
+			}
+		}
 
 
+		tmos_start_task(hidEmuTaskId, FLASH_POWER_LED_EVT, 500);
+
+	}
+	return (global_adc < 2480);
+}
 
 
-
+volatile int cur_mode=MODE_FORWARD;
  volatile bool keyPressed = false;
+ volatile bool keyPressed_select = false;
  volatile bool debounceActive = false;
- volatile int stableCount = 0;  // Count for stable readings
- volatile int tries = 0;  // Count for stable readings
-
- volatile int cur_mode=MODE_FORWARD;
+ volatile bool debounceActive_select = false;
+ volatile unsigned int stableCount = 0;  // Count for stable readings
+ volatile unsigned int stableCount_select = 0;  // Count for stable readings
+ volatile unsigned int tries = 0;  // Count for stable readings
+ volatile unsigned int tries_select = 0;  // Count for stable readings
  __INTERRUPT
  __HIGH_CODE
  void TMR0_IRQHandler() {
-	if (TMR0_GetITFlag(TMR0_3_IT_CYC_END)) {
-		//PRINT("tmr0 irq Timer  = %d\r\n",TMR0_GetCurrentTimer());
-		TMR0_ClearITFlag(TMR0_3_IT_CYC_END);
-		if (GPIOB_ReadPortPin(BUTTON_PIN) == 0) {
-					stableCount++;  // Increase count if button is still pressed
-				} else {
-					stableCount = 0;  // Reset count if button state is unstable
-					tries++;
-				}
+ 	if (TMR0_GetITFlag(TMR0_3_IT_CYC_END)) {
+ 		TMR0_ClearITFlag(TMR0_3_IT_CYC_END);
 
-		if (stableCount >= CHECKS_COUNT) {
-				PRINT("count > CHECK_COUNT: %d tries %d \r\n",stableCount,tries);
-				tries=0;
-				keyPressed = true;  // Set the key pressed flag
-				GPIOB_InverseBits(LED_PIN);
-				 tmos_start_task(hidEmuTaskId, START_REPORT_EVT, 20);
+ 		if (debounceActive) {
+ 			if (GPIOB_ReadPortPin(BUTTON_PIN) == 0) {
+ 						stableCount++;  // Increase count if button is still pressed
+ 					} else {
+ 						stableCount = 0;  // Reset count if button state is unstable
+ 						tries++;
+ 					}
 
-				debounceActive = false;  // Stop debounce process
-				TMR0_Disable() ;
-			}
+ 			if (stableCount >= CHECKS_COUNT) {
+ 					PRINT("count > CHECK_COUNT: %d tries %d \r\n",stableCount,tries);
+ 					tries=0;
+ 					keyPressed = true;  // Set the key pressed flag
+ 					GPIOA_InverseBits(LED_MIDDLE_RIGHT_PIN);
+ 					tmos_start_task(hidEmuTaskId, START_REPORT_EVT, 20);
 
-	}
+ 					debounceActive = false;  // Stop debounce process
+
+ 					//TMR0_Disable() ;
+ 				}
+ 		}
+
+ 		if (debounceActive_select) {
+ 				if (GPIOB_ReadPortPin(BUTTON_SELECT_PIN) == 0) {
+ 				            stableCount_select++;  // Increase count if button is still pressed
+ 				        } else {
+ 				            stableCount_select = 0;  // Reset count if button state is unstable
+ 				            tries_select++;
+ 				        }
+
+ 			    if (stableCount_select >= CHECKS_COUNT) {
+ 			    		PRINT("count_select > CHECK_COUNT: %d tries %d \r\n",stableCount_select,tries_select);
+ 			    		tries_select=0;
+ 			            keyPressed_select = true;  // Set the key pressed flag
+
+ 			          	if (cur_mode==MODE_FORWARD)
+ 			       			{cur_mode=MODE_BACKWARD;
+ 			          		//tmos_start_task(hidEmuTaskId, FLASH_POWER_LED_EVT, 500);
+ 			       			}
+ 			       		else
+ 			       		    cur_mode=MODE_FORWARD;
+ 			       		if (cur_mode==MODE_FORWARD) {
+ 			       			GPIOA_SetBits(LED_FORWARD_PIN);
+ 			       			GPIOA_ResetBits(LED_BACKWARD_PIN);
+ 			       		} else {
+ 			       			GPIOA_ResetBits(LED_FORWARD_PIN);
+ 			       			GPIOA_SetBits(LED_BACKWARD_PIN);
+
+ 			       		}
+ 			       		PRINT("cur_mode = %d\r\n",cur_mode);
+
+
+ 			            debounceActive_select = false;  // Stop debounce process
+ 			            //TMR0_Disable() ;
+ 			        }
+ 				}
+
+
+ 	}
+
+ 	if (debounceActive || debounceActive_select) {
+ 		TMR0_Enable();
+ 	} else {
+ 		TMR0_Disable();
+ 	}
  }
 
  __INTERRUPT
  __HIGH_CODE
  void GPIOB_IRQHandler() {
-	if (GPIOB_ReadITFlagBit(BUTTON_PIN)) {
-		GPIOB_ClearITFlagBit(BUTTON_PIN);
-		//PRINT("key\r\n");
-		//PRINT("Timer = %d\r\n",TMR0_GetCurrentTimer());
-		 if (!debounceActive) {
-				debounceActive = true;  // Start debounce process
-				stableCount = 0;  // Reset the stable count
-				//TMR0_TimerInit(DEBOUNCE_TICKS);  // Initialize (start) the timer with debounce ticks
-				TMR0_Enable();
-				TMR0_ClearITFlag(TMR0_3_IT_CYC_END);
+ 	if (GPIOB_ReadITFlagBit(BUTTON_PIN)) {
+ 		GPIOB_ClearITFlagBit(BUTTON_PIN);
+ 		PRINT(".");
+ 		//PRINT("Timer = %d\r\n",TMR0_GetCurrentTimer());
+ 		 if (!debounceActive) {
+ 		        debounceActive = true;  // Start debounce process
+ 		        stableCount = 0;  // Reset the stable count
+ 		        //TMR0_TimerInit(DEBOUNCE_TICKS);  // Initialize (start) the timer with debounce ticks
+ 		        TMR0_Enable();
+ 		        TMR0_ClearITFlag(TMR0_3_IT_CYC_END);
 
 
-		 }
+ 		 }
 
-	}
-	if (GPIOB_ReadITFlagBit(SELECT_PIN)) {
-		GPIOB_ClearITFlagBit(SELECT_PIN);
-		DelayMs(400);
-		if (cur_mode==MODE_FORWARD)
-			cur_mode=MODE_BACKWARD;
-		else
-		    cur_mode=MODE_FORWARD;
-		if (cur_mode==MODE_FORWARD) {
-			GPIOA_SetBits(LED_FORWARD_PIN);
-			GPIOA_ResetBits(LED_BACKWARD_PIN);
-		} else {
-			GPIOA_ResetBits(LED_FORWARD_PIN);
-			GPIOA_SetBits(LED_BACKWARD_PIN);
+ 	}
 
-		}
-		PRINT("cur_mode = %d\r\n",cur_mode);
-			//PRINT("Timer = %d\r\n",TMR0_GetCurrentTimer());
+ 	if (GPIOB_ReadITFlagBit(BUTTON_SELECT_PIN)) {
+ 		GPIOB_ClearITFlagBit(BUTTON_SELECT_PIN);
+ 		PRINT("-");
+ 		//PRINT("Timer = %d\r\n",TMR0_GetCurrentTimer());
+ 		 if (!debounceActive_select) {
+ 		        debounceActive_select = true;  // Start debounce process
+ 		        stableCount_select = 0;  // Reset the stable count
+ 		        //TMR0_TimerInit(DEBOUNCE_TICKS);  // Initialize (start) the timer with debounce ticks
+ 		        TMR0_Enable();
+ 		        TMR0_ClearITFlag(TMR0_3_IT_CYC_END);
 
-	}
 
+ 		 }
+
+ 	}
  }
+
+
 
 /*********************************************************************
  * LOCAL VARIABLES
@@ -327,6 +408,9 @@ void HidEmu_Init()
 
     // Setup a delayed profile startup
     tmos_set_event(hidEmuTaskId, START_DEVICE_EVT);
+
+    // enable power led alarm monitor
+    tmos_set_event(hidEmuTaskId, FLASH_POWER_LED_EVT);
 }
 
 /*********************************************************************
@@ -410,6 +494,20 @@ uint16_t HidEmu_ProcessEvent(uint8_t task_id, uint16_t events)
         // tmos_start_task(hidEmuTaskId, START_REPORT_EVT, 2000);
         return (events ^ START_REPORT_EVT);
     }
+
+    if(events & FLASH_POWER_LED_EVT)
+       {
+    		if (check_low_battery()) {
+    			GPIOA_InverseBits(LED_PIN);
+    			//printf("flash power\r\n");
+    		} else {
+    			GPIOA_SetBits(LED_PIN); // switch led off
+    		}
+    		// ost new event for next 500ms
+            tmos_start_task(hidEmuTaskId, FLASH_POWER_LED_EVT, 500);
+            return (events ^ FLASH_POWER_LED_EVT);
+       }
+
     return 0;
 }
 

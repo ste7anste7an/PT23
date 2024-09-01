@@ -3,7 +3,7 @@
  * Author             : WCH
  * Version            : V1.0
  * Date               : 2018/12/10
- * Description        : ��ط���
+ * Description        : µç³Ø·þÎñ
  *********************************************************************************
  * Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
  * Attention: This software (modified or not) and binary are used for 
@@ -26,8 +26,8 @@
  */
 
 // ADC voltage levels
-#define BATT_ADC_LEVEL_3V            409
-#define BATT_ADC_LEVEL_2V            273
+#define BATT_ADC_LEVEL_3V            2626
+#define BATT_ADC_LEVEL_2V            2460
 
 #define BATT_LEVEL_VALUE_IDX         2    // Position of battery level in attribute array
 #define BATT_LEVEL_VALUE_CCCD_IDX    3    // Position of battery level CCCD in attribute array
@@ -497,7 +497,14 @@ static uint8_t battMeasure(void)
 {
     uint16_t adc;
     uint8_t  percent;
+    uint16_t RoughCalib_Value = ADC_DataCalib_Rough(); // ╙├╙┌╝╞╦πADC─┌▓┐╞½▓εú¼╝╟┬╝╡╜╚½╛╓▒Σ┴┐ RoughCalib_Value╓╨
+    //PRINT("RoughCalib_Value =%d \n", RoughCalib_Value);
 
+    ADC_ChannelCfg(2);
+    uint16_t batlev= ADC_ExcutSingleConver();
+    printf("batlevel = %d\r\n",batlev);
+    adc = batlev+ RoughCalib_Value;
+    printf("adc = %d\r\n",batlev+ RoughCalib_Value);
     // Call measurement setup callback
     if(battServiceSetupCB != NULL)
     {
@@ -505,7 +512,7 @@ static uint8_t battMeasure(void)
     }
 
     // Configure ADC and perform a read
-    adc = 300;
+    //adc = 300;
     // Call measurement teardown callback
     if(battServiceTeardownCB != NULL)
     {
@@ -529,15 +536,16 @@ static uint8_t battMeasure(void)
         else
         {
             uint16_t range = battMaxLevel - battMinLevel + 1;
-
+            printf("calc percent adc-battMinLevel %d range %d (uint8_t)((80*(adc-battMinLevel))/range %d",
+            		adc-battMinLevel,range,(uint8_t)((80*(adc-battMinLevel))/range));
             // optional if you want to keep it even, otherwise just take floor of divide
             // range += (range & 1);
-            range >>= 2; // divide by 4
+            percent = 20 + (uint8_t)((80*(adc-battMinLevel))/range);
 
-            percent = (uint8_t)((((adc - battMinLevel) * 25) + (range - 1)) / range);
+            //percent = (uint8_t)((((adc - battMinLevel) * 25) + (range - 1)) / range);
         }
     }
-
+    printf("percent=%d\n\r",percent);
     return percent;
 }
 

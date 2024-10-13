@@ -92,17 +92,34 @@ static uint8_t hidEmuTaskId = INVALID_TASK_ID;
  * EXTERNAL FUNCTIONS
  */
 
+enum ChargingLed {
+  LED_OFF,
+  LED_ON,
+  LED_FLASH
+};
 
+enum Charging {
+  USB_FULL,
+  USB_CHARGING,
+  BATT,
+  BATT_LOW
+};
+
+#define VBAT_LOW 2360
+#define VBAT_FULL 2600
 
 uint16_t global_adc=0;
 uint16_t check_bat_counter=50; // start seting global_adc
+uint8_t state_charging_led;
+uint8_t state_charging=BATT;
 
-uint16_t check_low_battery(void) {
+uint8_t get_state_charging_led(void) {
 
 	check_bat_counter++;
 	//printf("check_bat_counter %d\n\r",check_bat_counter);
 	if (check_bat_counter>20) {
 		// check USB
+		check_bat_counter=0;
 		uint16_t adc;
 		uint8_t  percent;
 		uint16_t RoughCalib_Value = ADC_DataCalib_Rough(); // ╙├╙┌╝╞╦πADC─┌▓┐╞½▓εú¼╝╟┬╝╡╜╚½╛╓▒Σ┴┐ RoughCalib_Value╓╨
@@ -110,27 +127,52 @@ uint16_t check_low_battery(void) {
 		uint16_t batlev= ADC_ExcutSingleConver();
 		adc = batlev+ RoughCalib_Value;
 		printf("check bat: adc = %d low %d\r\n",batlev+ RoughCalib_Value,(adc < 2460));
-		check_bat_counter=0;
+
 		global_adc=adc;
 		if (GPIOB_ReadPortPin(USB_CONNECTED_PIN) == 0) {
-			printf("battery operation\r\n");
+			if (global_adc < VBAT_LOW) {
+				state_charging = BATT_LOW;
+			} else {
+				state_charging = BATT;
+			}
 			//return 0;
 		} else {
 			printf("USB charging\r\n");
-			if (global_adc<2600){
-				GPIOA_ResetBits(LED_PIN);
-			    return 1;
+			if (global_adc < VBAT_FULL){
+				state_charging = USB_CHARGING;
 			} else {
-				GPIOA_SetBits(LED_PIN);
-			    return 0;
+				state_charging = USB_FULL;
 			}
+		}
+		printf("adc %d charging state: ",global_adc);
+		switch (state_charging) {
+		case BATT:
+			printf(" BATT LED_OFF\r\n");
+			state_charging_led = LED_OFF;
+			break;
+		case BATT_LOW:
+			printf(" BATT_LOW LED_FLASH\r\n");
+			state_charging_led = LED_FLASH;
+			break;
+		case USB_FULL:
+			printf(" USB_FUL LED_OFFL\r\n");
+			state_charging_led = LED_OFF;
+			break;
+		case USB_CHARGING:
+			printf(" USB_CHARGING LED_ON\r\n");
+			state_charging_led = LED_ON;
+			break;
 		}
 
 
-		tmos_start_task(hidEmuTaskId, FLASH_POWER_LED_EVT, 500);
+		//GPIOB_SetBits(LED_PIN);
+
 
 	}
-	return (global_adc < 2480);
+
+
+	//printf("return state_charging_led %d\r\n",state_charging_led);
+	return state_charging_led;
 }
 
 
@@ -497,11 +539,21 @@ uint16_t HidEmu_ProcessEvent(uint8_t task_id, uint16_t events)
 
     if(events & FLASH_POWER_LED_EVT)
        {
-    		if (check_low_battery()) {
-    			GPIOA_InverseBits(LED_PIN);
-    			//printf("flash power\r\n");
-    		} else {
-    			GPIOA_SetBits(LED_PIN); // switch led off
+    		uint8_t state_led = get_state_charging_led();
+    		//printf("state_led=%d\r\n",state_led);
+    		switch (state_led) {
+    		case LED_ON:
+				//printf("tmr LED ON\r\n");
+				GPIOB_ResetBits(LED_PIN); // switch led on
+				break;
+    		case LED_OFF:
+				//printf("tmr LED OFF\r\n");
+				GPIOB_SetBits(LED_PIN); // switch led off
+				break;
+    		case LED_FLASH:
+				//printf("tmr LED FLASH\r\n");
+    			GPIOB_InverseBits(LED_PIN);
+    			break;
     		}
     		// ost new event for next 500ms
             tmos_start_task(hidEmuTaskId, FLASH_POWER_LED_EVT, 500);

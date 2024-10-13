@@ -26,8 +26,8 @@
  */
 
 // ADC voltage levels
-#define BATT_ADC_LEVEL_3V            2626
-#define BATT_ADC_LEVEL_2V            2460
+#define BATT_ADC_LEVEL_3V            2600  // fully charged
+#define BATT_ADC_LEVEL_2V            2160   // device switches off, minum battery
 
 #define BATT_LEVEL_VALUE_IDX         2    // Position of battery level in attribute array
 #define BATT_LEVEL_VALUE_CCCD_IDX    3    // Position of battery level CCCD in attribute array
@@ -537,10 +537,10 @@ static uint8_t battMeasure(void)
         {
             uint16_t range = battMaxLevel - battMinLevel + 1;
             printf("calc percent adc-battMinLevel %d range %d (uint8_t)((80*(adc-battMinLevel))/range %d",
-            		adc-battMinLevel,range,(uint8_t)((80*(adc-battMinLevel))/range));
+            		adc-battMinLevel,range,(uint8_t)((100*(adc-battMinLevel))/range));
             // optional if you want to keep it even, otherwise just take floor of divide
             // range += (range & 1);
-            percent = 20 + (uint8_t)((80*(adc-battMinLevel))/range);
+            percent = (uint8_t)((100*(adc-battMinLevel))/range);
 
             //percent = (uint8_t)((((adc - battMinLevel) * 25) + (range - 1)) / range);
         }

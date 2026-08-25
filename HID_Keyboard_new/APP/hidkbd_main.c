@@ -124,8 +124,14 @@ for (int j=0; j<3; j++) {
 }
 
 DelayMs(500);
-GPIOA_SetBits(LED_FORWARD_PIN);
-GPIOA_ResetBits(LED_BACKWARD_PIN);
+
+// default backward
+GPIOA_SetBits(LED_BACKWARD_PIN);
+GPIOA_ResetBits(LED_FORWARD_PIN);
+
+// default forward
+//GPIOA_SetBits(LED_FORWARD_PIN);
+//GPIOA_ResetBits(LED_BACKWARD_PIN);
 
 TMR0_TimerInit(DEBOUNCE_TICKS);
 TMR0_ITCfg(ENABLE, TMR0_3_IT_CYC_END);

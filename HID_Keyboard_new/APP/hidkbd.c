@@ -3,7 +3,7 @@
  * Author             : WCH
  * Version            : V1.0
  * Date               : 2018/12/10
- * Description        : À¶ÑÀ¼üÅÌÓ¦ÓÃ³ÌÐò£¬³õÊ¼»¯¹ã²¥Á¬½Ó²ÎÊý£¬È»ºó¹ã²¥£¬Ö±ÖÁÁ¬½ÓÖ÷»úºó£¬¶¨Ê±ÉÏ´«¼üÖµ
+ * Description        : Ã€Â¶Ã‘Ã€Â¼Ã¼Ã…ÃŒÃ“Â¦Ã“ÃƒÂ³ÃŒÃ�Ã²Â£Â¬Â³ÃµÃŠÂ¼Â»Â¯Â¹Ã£Â²Â¥Ã�Â¬Â½Ã“Â²ÃŽÃŠÃ½Â£Â¬ÃˆÂ»ÂºÃ³Â¹Ã£Â²Â¥Â£Â¬Ã–Â±Ã–Ã�Ã�Â¬Â½Ã“Ã–Ã·Â»ÃºÂºÃ³Â£Â¬Â¶Â¨ÃŠÂ±Ã‰Ã�Â´Â«Â¼Ã¼Ã–Âµ
  *********************************************************************************
  * Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
  * Attention: This software (modified or not) and binary are used for 
@@ -122,7 +122,7 @@ uint8_t get_state_charging_led(void) {
 		check_bat_counter=0;
 		uint16_t adc;
 		uint8_t  percent;
-		uint16_t RoughCalib_Value = ADC_DataCalib_Rough(); // ╙├╙┌╝╞╦πADC─┌▓┐╞½▓εú¼╝╟┬╝╡╜╚½╛╓▒Σ┴┐ RoughCalib_Value╓╨
+		uint16_t RoughCalib_Value = ADC_DataCalib_Rough(); // â•™â”œâ•™â”Œâ•�â•žâ•¦Ï€ADCâ”€â”Œâ–“â”�â•žÂ½â–“ÎµÃºÂ¼â•�â•Ÿâ”¬â•�â•¡â•œâ•šÂ½â•›â•“â–’Î£â”´â”� RoughCalib_Valueâ•“â•¨
 		ADC_ChannelCfg(2);
 		uint16_t batlev= ADC_ExcutSingleConver();
 		adc = batlev+ RoughCalib_Value;
@@ -175,8 +175,11 @@ uint8_t get_state_charging_led(void) {
 	return state_charging_led;
 }
 
+// default backward
+volatile int cur_mode=MODE_BACKWARD;
+// default backward
+//volatile int cur_mode=MODE_FORWARD;
 
-volatile int cur_mode=MODE_FORWARD;
  volatile bool keyPressed = false;
  volatile bool keyPressed_select = false;
  volatile bool debounceActive = false;
@@ -339,11 +342,22 @@ static uint8_t advertData[] = {
 
     0x0D,                           // length of this data
     GAP_ADTYPE_LOCAL_NAME_COMPLETE, // AD Type = Complete local name
-    'P',
-    'a',
-    'g',
-    'e',
+// next 4 lines for standard 'PageTurner or PageReturner
+
+//	'P',
+//    'a',
+//    'g',
+//    'e',
+    'S',
+	't',
+	'e',
+	'7',
+	'a',
+	'n',
     ' ',
+// for backward device uncomment next two lines
+	'R',
+	'e',
     'T',
     'u',
     'r',
@@ -354,7 +368,7 @@ static uint8_t advertData[] = {
 };
 
 // Device name attribute value
-static const uint8_t attDeviceName[GAP_DEVICE_NAME_LEN] = "Page Turner";
+static const uint8_t attDeviceName[GAP_DEVICE_NAME_LEN] = "Ste7an ReTurner";
 
 // HID Dev configuration
 static hidDevCfg_t hidEmuCfg = {
